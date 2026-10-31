@@ -15,7 +15,9 @@ do_install()
     local packages=""
     case "${DISTRIB}:${ARCH}:${SUITE}" in
     debian:*|ubuntu:*|kali:*)
-        packages="tightvncserver"
+        # NOTE: tightvnc's own X server terminates itself on modern Android,
+        # so use Xvfb + x11vnc instead
+        packages="xvfb x11vnc"
         apt_install ${packages}
     ;;
     archlinux:*)
@@ -56,26 +58,28 @@ do_start()
     is_ok "skip" || return 0
     # remove locks
     remove_files "/tmp/.X${VNC_DISPLAY}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY}"
-    # exec vncserver
-    chroot_exec -u ${USER_NAME} vncserver :${VNC_DISPLAY} -depth ${VNC_DEPTH} -dpi ${VNC_DPI} -geometry ${VNC_WIDTH}x${VNC_HEIGHT} ${VNC_ARGS}
-    is_ok "fail" "done"
+    mkdir -p "${CHROOT_DIR}/tmp/.X11-unix"
+    chmod 1777 "${CHROOT_DIR}/tmp/.X11-unix"
+    local vnc_home="$(user_home ${USER_NAME})/.vnc"
+    # virtual framebuffer
+    chroot_exec -u ${USER_NAME} "Xvfb :${VNC_DISPLAY} -screen 0 ${VNC_WIDTH}x${VNC_HEIGHT}x${VNC_DEPTH} -nolisten tcp >/tmp/xvfb.log 2>&1 &"
+    sleep 3
+    # desktop session
+    chroot_exec -u ${USER_NAME} "DISPLAY=:${VNC_DISPLAY} /bin/sh -c '. \$HOME/.vnc/xstartup' >/tmp/lxde.log 2>&1 &"
+    sleep 3
+    # vnc server
+    chroot_exec -u ${USER_NAME} "DISPLAY=:${VNC_DISPLAY} x11vnc -display :${VNC_DISPLAY} -rfbauth ${vnc_home}/passwd -forever -shared -noxdamage >/tmp/x11vnc.log 2>&1 &"
     return 0
 }
 
 do_stop()
 {
     msg -n ":: Stopping ${COMPONENT} ... "
-    chroot_exec -u ${USER_NAME} vncserver -kill :${VNC_DISPLAY}
-    kill_pids /tmp/xsession.pid
+    chroot_exec -u root "pkill -f x11vnc" || true
+    chroot_exec -u root "pkill -f Xvfb" || true
+    chroot_exec -u root "pkill -f startlxde" || true
+    remove_files "/tmp/.X${VNC_DISPLAY}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY}"
     is_ok "fail" "done"
-    return 0
-}
-
-do_status()
-{
-    msg -n ":: ${COMPONENT} ... "
-    is_started /tmp/xsession.pid
-    is_ok "stopped" "started"
     return 0
 }
 
