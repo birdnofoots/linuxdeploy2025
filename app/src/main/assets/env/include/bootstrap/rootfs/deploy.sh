@@ -8,6 +8,16 @@
 
 rootfs_make()
 {
+    # On 64-bit devices the bundled mke2fs may be a 32-bit binary which modern
+    # Android kernels refuse to execute. Fall back to directory mode then.
+    if [ "${TARGET_TYPE}" = "file" ]; then
+        local makefs_check=$(which mke2fs)
+        if [ -z "${makefs_check}" ] || ! ${makefs_check} -V >/dev/null 2>&1; then
+            msg "No usable mke2fs found, switching to directory mode"
+            TARGET_TYPE="directory"
+        fi
+    fi
+
     msg -n "Checking installation path ... "
     case "${TARGET_TYPE}" in
     file)

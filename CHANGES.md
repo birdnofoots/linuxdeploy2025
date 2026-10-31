@@ -87,3 +87,19 @@ Users currently on xenial or older versions can:
 1. Continue using their current setup (no forced upgrade)
 2. Choose to install jammy for better support and security
 3. Select noble for the latest features (if not using i386)
+
+## 2026-10-31 - 64-bit Android support
+
+- `EnvUtils.updateEnv()`: do not install 32-bit `bin/arm` / `bin/x86` tools on
+  64-bit devices (Android 15/16 kernels cannot run 32-bit ELF binaries).
+- `qemu-i386-static` added to `assets/bin/arm_64`.
+- `cli.sh`: removed `set -e` from `component_exec()` (a failing command inside
+  a component silently killed the whole script), `fs_check()` now returns the
+  real `e2fsck` status and the container mount reports `fail` instead of `skip`.
+- `cli.sh`: `source_path=auto` resolves to the official Ubuntu base tarball.
+- `bootstrap/rootfs/deploy.sh`: fall back to directory mode when no usable
+  `mke2fs` is available.
+- `core/net/deploy.sh`, `graphics/vnc/deploy.sh`: fixed non-zero exit codes
+  that aborted the deployment.
+- Default properties: Ubuntu 24.04 (noble), arm64, directory mode,
+  `/data/local/linuxdeploy`.

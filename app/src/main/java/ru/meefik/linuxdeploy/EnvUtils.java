@@ -252,14 +252,14 @@ public class EnvUtils {
                 if (!extractDir(c, PrefStore.getBinDir(c), "bin/arm", "")) return false;
                 break;
             case "arm_64":
-                if (!extractDir(c, PrefStore.getBinDir(c), "bin/arm", "")) return false;
+                // NOTE: never install the 32-bit tools on a 64-bit device,
+                // modern Android kernels cannot execute 32-bit ELF binaries
                 if (!extractDir(c, PrefStore.getBinDir(c), "bin/arm_64", "")) return false;
                 break;
             case "x86":
                 if (!extractDir(c, PrefStore.getBinDir(c), "bin/x86", "")) return false;
                 break;
             case "x86_64":
-                if (!extractDir(c, PrefStore.getBinDir(c), "bin/x86", "")) return false;
                 if (!extractDir(c, PrefStore.getBinDir(c), "bin/x86_64", "")) return false;
                 break;
         }

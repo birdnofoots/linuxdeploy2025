@@ -446,7 +446,9 @@ component_exec()
         components=$(IGNORE_DEPENDS=" " component_depends ${components})
     fi
     [ -n "${components}" ] || return 1
-    (set -e
+    # NOTE: do not use "set -e" here, otherwise any failed command inside a
+    # component silently terminates the whole script without any error message
+    (set +e
         for COMPONENT in ${components}
         do
             COMPONENT_DIR="${INCLUDE_DIR}/${COMPONENT}"
@@ -475,9 +477,7 @@ component_exec()
             [ "${WITHOUT_CHECK}" != "true" ] && params_check ${PARAMS}
             # exec action
             [ "${DEBUG_MODE}" = "true" ] && msg "## ${COMPONENT} : ${DO_ACTION}"
-            set +e
             eval ${DO_ACTION} || exit 1
-            set -e
         done
     exit 0)
     is_ok || return 1
@@ -534,8 +534,11 @@ fs_check()
     fi
     case "${TARGET_TYPE}" in
     file|partition)
+        if [ ! -e "${TARGET_PATH}" ]; then
+            return 1
+        fi
         ${checkfs} -p "${TARGET_PATH}" >/dev/null
-        return 0
+        return $?
     ;;
     esac
     return 1
@@ -669,8 +672,19 @@ container_mount()
     params_check TARGET_PATH || return 1
 
     msg -n "Checking file system ... "
-    fs_check
-    is_ok "skip" "done"
+    case "${TARGET_TYPE}" in
+    file|partition)
+        if fs_check; then
+            msg "done"
+        else
+            msg "fail"
+            return 1
+        fi
+    ;;
+    *)
+        msg "skip"
+    ;;
+    esac
 
     msg "Mounting the container: "
     local item
@@ -1054,6 +1068,23 @@ PROFILE=$(basename "${CONF_FILE}" ".conf")
 # read config
 OPTLST=" " # space is required
 params_read "${CONF_FILE}"
+
+# resolve "auto" source path
+if [ "${SOURCE_PATH}" = "auto" ]; then
+    case "${DISTRIB}" in
+    ubuntu)
+        case "${ARCH}" in
+        arm64) SOURCE_PATH="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.5-base-arm64.tar.gz" ;;
+        armhf) SOURCE_PATH="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.5-base-armhf.tar.gz" ;;
+        amd64) SOURCE_PATH="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.5-base-amd64.tar.gz" ;;
+        *) SOURCE_PATH="http://archive.ubuntu.com/ubuntu/" ;;
+        esac
+    ;;
+    *)
+        SOURCE_PATH=""
+    ;;
+    esac
+fi
 
 # fix params
 WITHOUT_CHECK="false"

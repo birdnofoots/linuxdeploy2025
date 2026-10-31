@@ -86,3 +86,31 @@ Donations:
 
 - E-Money: <https://meefik.github.io/donate>
 - Google Play: <https://play.google.com/store/apps/details?id=ru.meefik.donate>
+
+## Fixes for 64-bit Android (2026)
+
+The upstream project shipped only 32-bit `mke2fs`/`e2fsck`/`dd`/`pkgdetails`
+binaries. On modern 64-bit Android (arm64, Android 15/16) the kernel refuses to
+execute 32-bit ELF files (`not executable: 32-bit ELF file`), so the disk image
+could never be created and `start` failed with `Mounting the container: / ... fail`.
+
+This fork fixes that:
+
+- **No 32-bit tools on 64-bit devices** (`EnvUtils.updateEnv()`) - `bin/arm_64`
+  and `bin/x86_64` are installed without their 32-bit counterparts. `dd` is
+  provided by the bundled 64-bit busybox.
+- **Automatic fallback to directory mode** - when no usable `mke2fs` is found,
+  the deployment switches to directory mode instead of failing silently.
+- **No more silent aborts** - `component_exec()` no longer runs with `set -e`,
+  so a single failed command inside a component cannot terminate the whole
+  script without any message (this was the reason why `start` stopped at
+  `Configuring core/net ...` with exit code 0).
+- **Correct file system check** - `fs_check()` now returns the real `e2fsck`
+  exit code and reports `fail` when the image file does not exist.
+- **Ubuntu base images out of the box** - `source_path` may be set to `auto`,
+  which resolves to the official Ubuntu 24.04 base tarball for the selected
+  architecture (no `debootstrap`/`pkgdetails` needed).
+
+Recommended settings on a 64-bit device: distribution `ubuntu`, suite `noble`,
+architecture `arm64`, source path `auto`, target type `directory`,
+target path `/data/local/linuxdeploy`.

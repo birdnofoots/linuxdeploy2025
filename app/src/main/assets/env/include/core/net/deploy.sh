@@ -11,9 +11,9 @@ do_configure()
     if [ -z "${DNS}" -o "${DNS}" = "auto" ]; then
         if [ -n "$(which getprop)" ]; then
             dns=$(getprop net.dns1)
-            [ -n "${dns}" ] && dns_list="${dns}"
+            if [ -n "${dns}" ]; then dns_list="${dns}"; fi
             dns=$(getprop net.dns2)
-            [ -n "${dns}" ] && dns_list="${dns_list} ${dns}"
+            if [ -n "${dns}" ]; then dns_list="${dns_list} ${dns}"; fi
         fi
         if [ -z "${dns_list}" -a -e "/etc/resolv.conf" ]; then
             dns_list=$(grep "^nameserver" /etc/resolv.conf | awk '{print $2}')
