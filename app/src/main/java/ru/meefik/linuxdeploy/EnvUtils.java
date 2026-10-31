@@ -210,6 +210,12 @@ public class EnvUtils {
                 params.add(0, "PATH=" + PrefStore.getBinDir(c) + ":$PATH");
                 if (PrefStore.isTraceMode(c))
                     params.add(0, "set -x");
+                // Android 11+ gives every application its own mount namespace.
+                // Mount the container in the namespace of init, otherwise the
+                // mounts are not visible outside of the application.
+                if ("su".equals(shell)) {
+                    params.add("if [ -x /system/bin/nsenter ] && nsenter -t 1 -m -- true 2>/dev/null; then exec nsenter -t 1 -m -- sh; fi");
+                }
                 params.add("exit $?");
 
                 for (String cmd : params) {

@@ -103,3 +103,11 @@ Users currently on xenial or older versions can:
   that aborted the deployment.
 - Default properties: Ubuntu 24.04 (noble), arm64, directory mode,
   `/data/local/linuxdeploy`.
+
+## 2026-10-31 - Mount namespace fix (Android 11+)
+
+- `EnvUtils.exec()`: when running with root, the commands are executed in the
+  mount namespace of `init` (`nsenter -t 1 -m`). Android 11 and newer give
+  every application its own mount namespace, so the container mounts created
+  by the application were invisible everywhere else and `start` failed with
+  `Mounting the container: / ... fail`.
