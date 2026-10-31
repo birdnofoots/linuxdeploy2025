@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// Release signing is provided through environment variables (CI secrets).
+// Without them the release build stays unsigned and falls back to a debug key.
+def ksPath = System.getenv("ANDROID_KEYSTORE_PATH")
+def ksStorePass = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+def ksKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+def ksKeyPass = System.getenv("ANDROID_KEY_PASSWORD")
+
 android {
     compileSdkVersion 29
     buildToolsVersion '29.0.2'
@@ -13,11 +20,26 @@ android {
         versionName "2.6.0"
         vectorDrawables.useSupportLibrary true
     }
+
+    if (ksPath) {
+        signingConfigs {
+            release {
+                storeFile file(ksPath)
+                storePassword ksStorePass
+                keyAlias ksKeyAlias
+                keyPassword ksKeyPass
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (ksPath) {
+                signingConfig signingConfigs.release
+            }
         }
     }
     lintOptions {
